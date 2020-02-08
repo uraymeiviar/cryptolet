@@ -1,0 +1,54 @@
+{
+    "configurations": [
+        {
+            "name": "arduino",
+            "defines": [
+                "ARDUINO=100",
+                "USBCON",
+                "BOARD_HAS_PSRAM"
+            ],
+            "includePath": [
+                "./**",
+                "${workspaceFolder}/lib/**",
+                "${workspaceFolder}/lib/Adafruit_GFX_Library/**",
+                "${workspaceFolder}/lib/Arduino_ST7789/**",
+                "${workspaceFolder}/lib/ArduinoJson/**",
+                "${workspaceFolder}/lib/Time/**",
+                "esp32/hardware/esp32/1.0.4/variants/esp32/*",
+                "esp32/hardware/esp32/1.0.4/cores/esp32/**",
+                "esp32/hardware/esp32/1.0.4/libraries/**",
+                "esp32/hardware/esp32/1.0.4/libraries/HTTPClient/src/*",
+                "esp32/hardware/esp32/1.0.4/libraries/WiFi/src/*",
+                "esp32/hardware/esp32/1.0.4/libraries/SPI/src/*",
+                "esp32/hardware/esp32/1.0.4/libraries/WiFiClientSecure/src/*",
+                "esp32/hardware/esp32/1.0.4/tools/sdk/include/**",
+                "esp32/hardware/esp32/1.0.4/tools/sdk/include/esp32/*",
+                "esp32/hardware/esp32/1.0.4/tools/sdk/include/esp_event/*",
+                "esp32/hardware/esp32/1.0.4/tools/sdk/include/freertos/*",
+                "esp32/hardware/esp32/1.0.4/tools/sdk/include/freertos/freertos/**",
+                "esp32/hardware/esp32/1.0.4/tools/sdk/include/config/*",
+                "esp32/hardware/esp32/1.0.4/tools/sdk/include/soc/*",
+                "esp32/hardware/esp32/1.0.4/tools/sdk/include/heap/*",
+                "esp32/hardware/esp32/1.0.4/tools/sdk/include/driver/*",
+                "esp32/hardware/esp32/1.0.4/tools/sdk/include/tcpip_adapter/*",
+                "esp32/hardware/esp32/1.0.4/tools/sdk/include/lwip/*",
+                "esp32/hardware/esp32/1.0.4/tools/sdk/include/vfs/*",
+                "esp32/hardware/esp32/1.0.4/tools/sdk/include/newlib/*",
+                "esp32/hardware/esp32/1.0.4/tools/sdk/include/mbedtls/*",
+                "esp32/tools/xtensa-esp32-elf-gcc/1.22.0-80-g6c4433a-5.2.0/xtensa-esp32-elf/include/c++/5.2.0/xtensa-esp32-elf/*",
+                "esp32/tools/xtensa-esp32-elf-gcc/1.22.0-80-g6c4433a-5.2.0/xtensa-esp32-elf/include/c++/5.2.0/xtensa-esp32-elf/esp32-psram/*",
+                "esp32/tools/xtensa-esp32-elf-gcc/1.22.0-80-g6c4433a-5.2.0/lib/gcc/xtensa-esp32-elf/5.2.0/include/*",
+                "esp32/tools/xtensa-esp32-elf-gcc/1.22.0-80-g6c4433a-5.2.0/xtensa-esp32-elf/include/**",
+                "esp32/tools/xtensa-esp32-elf-gcc/1.22.0-80-g6c4433a-5.2.0/xtensa-esp32-elf/include/c++/5.2.0/*"
+            ],
+            "forcedInclude": [
+                "esp32/hardware/esp32/1.0.4/cores/esp32/Arduino.h"
+            ],
+            "intelliSenseMode": "clang-x64",
+            "compilerPath": "esp32/tools/xtensa-esp32-elf-gcc/1.22.0-80-g6c4433a-5.2.0/bin/xtensa-esp32-elf-gcc.exe",
+            "cStandard": "c11",
+            "cppStandard": "c++17"
+        }
+    ],
+    "version": 4
+}
