@@ -5,7 +5,8 @@
             "defines": [
                 "ARDUINO=100",
                 "USBCON",
-                "BOARD_HAS_PSRAM"
+                "BOARD_HAS_PSRAM",
+                "ESP32"
             ],
             "includePath": [
                 "./**",
@@ -14,6 +15,8 @@
                 "${workspaceFolder}/lib/Arduino_ST7789/**",
                 "${workspaceFolder}/lib/ArduinoJson/**",
                 "${workspaceFolder}/lib/Time/**",
+                "${workspaceFolder}/lib/ESPAsyncWebServer/src/**",
+                "${workspaceFolder}/lib/AsyncTCP/src/**",
                 "esp32/hardware/esp32/1.0.4/variants/esp32/*",
                 "esp32/hardware/esp32/1.0.4/cores/esp32/**",
                 "esp32/hardware/esp32/1.0.4/libraries/**",
@@ -21,6 +24,7 @@
                 "esp32/hardware/esp32/1.0.4/libraries/WiFi/src/*",
                 "esp32/hardware/esp32/1.0.4/libraries/SPI/src/*",
                 "esp32/hardware/esp32/1.0.4/libraries/WiFiClientSecure/src/*",
+                "esp32/hardware/esp32/1.0.4/libraries/ESPmDNS/src/*",
                 "esp32/hardware/esp32/1.0.4/tools/sdk/include/**",
                 "esp32/hardware/esp32/1.0.4/tools/sdk/include/esp32/*",
                 "esp32/hardware/esp32/1.0.4/tools/sdk/include/esp_event/*",

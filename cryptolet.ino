@@ -1,8 +1,11 @@
 #define INCLUDE_vTaskDelay 1
 #define INCLUDE_uxTaskGetStackHighWaterMark 1
+#define ESP32
+
 #include <Arduino.h>
 #include "Adafruit_GFX.h"    // Core graphics library by Adafruit
 #include "Arduino_ST7789.h" // Hardware-specific library for ST7789 (with or without CS pin)
+#include "SPIFFS.h"
 
 // #define TFT_DC    8
 // #define TFT_RST   9
@@ -35,12 +38,15 @@ const char* password = "tasikmalaya10";
 
 
 #include <TimeLib.h>
+#include <ESPmDNS.h>
+#include "FS.h"
 #include "esp32-hal-cpu.h"
 #include "HostTime.h"
 #include "IndodaxDataSource.h"
 #include "BfxDataSource.h"
 #include "PriceHistory.h"
 #include "UIPriceTicker.h"
+#include "WebServer.h"
 
 DataSource* dataSource[4];
 
@@ -203,14 +209,13 @@ void renderDataTask( void* param)
 		{
 			vTaskDelay(1000);
 		}
-		
+
 		// UBaseType_t stackSize = uxTaskGetStackHighWaterMark(renderTask);
-		// Serial.print("rendertask counter =");
-		// Serial.print(fetchRenderTaskCounter);
-		// Serial.print(" stack = ");
-		// Serial.println(stackSize);
+		// Serial.printf("renderTask stack %d\n", stackSize);
 	}
 }
+
+WebServer* webserver = nullptr;
 
 void setup(void)
 {
@@ -253,9 +258,40 @@ void setup(void)
 	tft.fillScreen(BLACK);
 	tft.setCursor(0, 0);	
 
-	// Serial.println("syncing time");
-	// HostTime::syncCurrentTime();
-	// Serial.println("syncing time done");
+	bool spiffsMounted = false;
+	if(!SPIFFS.begin(true)){
+		Serial.println("An Error has occurred while mounting SPIFFS\n");
+		vTaskDelay(500);
+		Serial.println("retrying for second time could be because of not formatted yet\n");
+		if(!SPIFFS.begin(true)){
+			Serial.println("(still) An Error has occurred while mounting SPIFFS\n");			
+		}
+		else{
+			spiffsMounted = true;
+		}
+	}
+	else{
+		spiffsMounted = true;
+	}
+
+	if(spiffsMounted)
+	{
+		Serial.printf("SPI FFS %'d of %'d\n",SPIFFS.usedBytes(),SPIFFS.totalBytes());
+		File root = SPIFFS.open("/");
+		if(root)
+		{
+			File file = root.openNextFile();
+			while(file){
+
+				Serial.printf("SPI FFS File: %s\n", file.name());		
+				file = root.openNextFile();
+			}
+		}
+		webserver = new WebServer(80);
+		webserver->begin();
+
+		MDNS.addService("http","tcp",80);
+	}
 
 	xTaskCreatePinnedToCore(
 		renderDataTask,         /* pvTaskCode */
@@ -319,8 +355,5 @@ void loop()
 		}
 	}
 	// UBaseType_t stackSize = uxTaskGetStackHighWaterMark(fetchTask);
-	// Serial.print("fetchTask counter =");
-	// Serial.print(fetchDataTaskCounter);
-	// Serial.print(" stack = ");
-	// Serial.println(stackSize);
+	// Serial.printf("fetchTask counter = %d stack %d\n", fetchDataTaskCounter, stackSize);
 }

@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang=en>
+<title>ESP Editor</title>
+<style media=screen>
+    .cm {
+        z-index: 300;
+        position: absolute;
+        left: 5px;
+        border: 1px solid #444;
+        background-color: #f5f5f5;
+        display: none;
+        box-shadow: 0 0 10px rgba(0, 0, 0, .4);
+        font-size: 12px;
+        font-family: sans-serif;
+        font-weight: 700
+    }
+    
+    .cm ul {
+        list-style: none;
+        top: 0;
+        left: 0;
+        margin: 0;
+        padding: 0
+    }
+    
+    .cm li {
+        position: relative;
+        min-width: 60px;
+        cursor: pointer
+    }
+    
+    .cm span {
+        color: #444;
+        display: inline-block;
+        padding: 6px
+    }
+    
+    .cm li:hover {
+        background: #444
+    }
+    
+    .cm li:hover span {
+        color: #eee
+    }
+    
+    .tvu li,
+    .tvu ul {
+        padding: 0;
+        margin: 0;
+        list-style: none
+    }
+    
+    .tvu input {
+        position: absolute;
+        opacity: 0
+    }
+    
+    .tvu {
+        font: normal 12px Verdana, Arial, Sans-serif;
+        -moz-user-select: none;
+        -webkit-user-select: none;
+        user-select: none;
+        color: #444;
+        line-height: 16px
+    }
+    
+    .tvu span {
+        margin-bottom: 5px;
+        padding: 0 0 0 18px;
+        cursor: pointer;
+        display: inline-block;
+        height: 16px;
+        vertical-align: middle;
+        background: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAQAAAC1+jfqAAAABGdBTUEAAK/INwWK6QAAABl0RVh0U29mdHdhcmUAQWRvYmUgSW1hZ2VSZWFkeXHJZTwAAADoSURBVBgZBcExblNBGAbA2ceegTRBuIKOgiihSZNTcC5LUHAihNJR0kGKCDcYJY6D3/77MdOinTvzAgCw8ysThIvn/VojIyMjIyPP+bS1sUQIV2s95pBDDvmbP/mdkft83tpYguZq5Jh/OeaYh+yzy8hTHvNlaxNNczm+la9OTlar1UdA/+C2A4trRCnD3jS8BB1obq2Gk6GU6QbQAS4BUaYSQAf4bhhKKTFdAzrAOwAxEUAH+KEM01SY3gM6wBsEAQB0gJ+maZoC3gI6iPYaAIBJsiRmHU0AALOeFC3aK2cWAACUXe7+AwO0lc9eTHYTAAAAAElFTkSuQmCC) no-repeat;
+        background-position: 0 0
+    }
+    
+    .tvu span:hover {
+        text-decoration: underline
+    }
+    
+    @media screen and (-webkit-min-device-pixel-ratio:0) {
+        .tvu {
+            -webkit-animation: webkit-adjacent-element-selector-bugfix infinite 1s
+        }
+        @-webkit-keyframes webkit-adjacent-element-selector-bugfix {
+            from {
+                padding: 0
+            }
+            to {
+                padding: 0
+            }
+        }
+    }
+    
+    #uploader {
+        position: absolute;
+        top: 0;
+        right: 0;
+        left: 0;
+        height: 28px;
+        line-height: 24px;
+        padding-left: 10px;
+        background-color: #444;
+        color: #eee
+    }
+    
+    #tree {
+        position: absolute;
+        top: 28px;
+        bottom: 0;
+        left: 0;
+        width: 160px;
+        padding: 8px
+    }
+    
+    #editor,
+    #preview {
+        position: absolute;
+        top: 28px;
+        right: 0;
+        bottom: 0;
+        left: 160px;
+        border-left: 1px solid #eee
+    }
+    
+    #preview {
+        background-color: #eee;
+        padding: 5px
+    }
+    
+    #loader {
+        position: absolute;
+        top: 36%;
+        right: 40%
+    }
+    
+    .loader {
+        z-index: 10000;
+        border: 8px solid #b5b5b5;
+        border-top: 8px solid #3498db;
+        border-bottom: 8px solid #3498db;
+        border-radius: 50%;
+        width: 240px;
+        height: 240px;
+        animation: spin 2s linear infinite;
+        display: none
+    }
+    
+    @keyframes spin {
+        0% {
+            transform: rotate(0)
+        }
+        100% {
+            transform: rotate(360deg)
+        }
+    }
+</style>
+<script>
+    function ge(e) {
+        return document.getElementById(e)
+    }
+
+    function ce(e) {
+        return document.createElement(e)
+    }
+
+    function sortByKey(e, t) {
+        return e.sort(function(e, n) {
+            var a = e[t],
+                i = n[t];
+            return a < i ? -1 : a > i ? 1 : 0
+        })
+    }
+
+    function createFileUploader(e, t, n) {
+        function a(e, n) {
+            200 != e ? alert("ERROR[" + e + "]: " + n) : t.refreshPath(s.value)
+        }
+
+        function i(e) {
+            var t = new FormData;
+            t.append("path", e), requests.add("PUT", window.location.pathname+"/edit", t, a)
+        }
+        var o = ce("button");
+        o.innerHTML = "Refresh List", ge(e).appendChild(o);
+        var c = ce("input");
+        c.type = "file", c.multiple = !1, c.name = "data", c.id = "upload-select", ge(e).appendChild(c);
+        var s = ce("input");
+        s.id = "upload-path", s.type = "text", s.name = "path", s.defaultValue = "/", ge(e).appendChild(s);
+        var d = ce("button");
+        d.innerHTML = "Upload", ge(e).appendChild(d);
+        var l = ce("button");
+        l.innerHTML = "Create", ge(e).appendChild(l);
+        var r = ce("input");
+        r.id = "editor-filename", r.type = "text", r.disabled = !0, r.size = 20, ge(e).appendChild(r);
+        var u = ce("button");
+        u.innerHTML = " Save ", ge(e).appendChild(u), l.onclick = function(e) {
+            i(s.value), n.loadUrl(s.value), s.value = "/"
+        }, u.onclick = function(e) {
+            n.execCommand("saveCommand")
+        }, o.onclick = function(e) {
+            t.refreshPath(s.value)
+        }, d.onclick = function(e) {
+            if (0 !== c.files.length) {
+                var t = new FormData;
+                t.append("data", c.files[0], s.value), requests.add("POST", window.location.pathname+"/edit", t, a), ge("upload-path").value = "/", ge("upload-select").value = ""
+            }
+        }, c.onchange = function(e) {
+            if (0 !== c.files.length) {
+                var t = c.files[0].name,
+                    n = /(?:\.([^.]+))?$/.exec(t)[1],
+                    a = /(.*)\.[^.]+$/.exec(t)[1];
+                void 0 !== typeof a && (t = a), s.value = "/" + t + "." + n
+            }
+        }
+    }
+
+    function createTree(e, t) {
+        function n(e) {
+            ge("download-frame").src = "/edit?download=" + e
+        }
+
+        function a(e) {
+            ge("editor-filename").value = e, ge("editor").style.display = "none", h.style.display = "block", h.innerHTML = '<img src="'+window.location.pathname+'/edit?edit=' + e + "&_cb=" + Date.now() + '" style="max-width:100%; max-height:100%; margin:auto; display:block;" />'
+        }
+
+        function i(e, i) {
+            var o = ce("ul");
+            e.appendChild(o);
+            var c = ce("li");
+            o.appendChild(c), l(i) ? (c.innerHTML = "<span>Preview</span>", c.onclick = function(t) {
+                a(i), document.body.getElementsByClassName("cm").length > 0 && document.body.removeChild(e)
+            }) : d(i) && (c.innerHTML = "<span>Edit</span>", c.onclick = function(n) {
+                t.loadUrl(i), document.body.getElementsByClassName("cm").length > 0 && document.body.removeChild(e)
+            });
+            var s = ce("li");
+            o.appendChild(s), s.innerHTML = "<span>Download</span>", s.onclick = function(t) {
+                n(i), document.body.getElementsByClassName("cm").length > 0 && document.body.removeChild(e)
+            };
+            var r = ce("li");
+            o.appendChild(r), r.innerHTML = "<span>Delete</span>", r.onclick = function(t) {
+                u(i), document.body.getElementsByClassName("cm").length > 0 && document.body.removeChild(e)
+            }
+        }
+
+        function o(e, t, n) {
+            var a = ce("div"),
+                o = document.body.scrollTop ? document.body.scrollTop : document.documentElement.scrollTop,
+                c = document.body.scrollLeft ? document.body.scrollLeft : document.documentElement.scrollLeft,
+                s = e.clientX + c,
+                d = e.clientY + o;
+            a.className = "cm", a.style.display = "block", a.style.left = s + "px", a.style.top = d + "px", i(a, t), document.body.appendChild(a);
+            var l = a.offsetWidth,
+                r = a.offsetHeight;
+            a.onmouseout = function(e) {
+                (e.clientX < s || e.clientX > s + l || e.clientY < d || e.clientY > d + r) && document.body.getElementsByClassName("cm").length > 0 && document.body.removeChild(a)
+            }
+        }
+
+        function c(e, n, i) {
+            var c = ce("li");
+            c.id = n;
+            var s = ce("span");
+            return s.innerHTML = n, c.appendChild(s), c.onclick = function(e) {
+                d(c.id.toLowerCase()) ? t.loadUrl(c.id) : l(c.id.toLowerCase()) && a(c.id)
+            }, c.oncontextmenu = function(e) {
+                e.preventDefault(), e.stopPropagation(), o(e, c.id, !0)
+            }, c
+        }
+
+        function s(e, t, n) {
+            sortByKey(n, "name");
+            var a = ce("ul");
+            e.appendChild(a);
+            for (var i = n.length, o = 0; o < i; o++) "file" === n[o].type && a.appendChild(c(t, n[o].name, n[o].size))
+        }
+
+        function d(e) {
+            var t = /(?:\.([^.]+))?$/.exec(e)[1];
+            if (void 0 !== typeof t) switch (t) {
+                case "txt":
+                case "htm":
+                case "html":
+                case "js":
+                case "css":
+                case "xml":
+                case "json":
+                case "conf":
+                case "ini":
+                case "h":
+                case "c":
+                case "cpp":
+                case "php":
+                case "hex":
+                case "ino":
+                case "pde":
+                    return !0
+            }
+            return !1
+        }
+
+        function l(e) {
+            var t = /(?:\.([^.]+))?$/.exec(e)[1];
+            if (void 0 !== typeof t) switch (t) {
+                case "png":
+                case "jpg":
+                case "gif":
+                case "bmp":
+                    return !0
+            }
+            return !1
+        }
+
+        function r(e) {
+            return function(e, t) {
+                200 != e ? alert("ERROR[" + e + "]: " + t) : (f.removeChild(f.childNodes[0]), m(f, "/"))
+            }
+        }
+
+        function u(e) {
+            var t = new FormData;
+            t.append("path", e), requests.add("DELETE", window.location.pathname+"/edit", t, r(e))
+        }
+
+        function p(e, t) {
+            return function(n, a) {
+                200 == n && s(e, t, JSON.parse(a))
+            }
+        }
+
+        function m(e, t) {
+            requests.add("GET", window.location.pathname+"/edit", {
+                list: t
+            }, p(e, t))
+        }
+        var h = ge("preview"),
+            f = ce("div");
+        return f.className = "tvu", ge(e).appendChild(f), this.refreshPath = function(e) {
+            f.removeChild(f.childNodes[0]), m(f, "/")
+        }, m(f, "/"), this
+    }
+
+    function createEditor(e, t, n, a, i) {
+        function o(e) {
+            var t = "plain",
+                n = /(?:\.([^.]+))?$/.exec(e)[1];
+            if (void 0 !== typeof n) switch (n) {
+                case "txt":
+                case "hex":
+                case "conf":
+                    t = "plain";
+                    break;
+                case "htm":
+                    t = "html";
+                    break;
+                case "js":
+                    t = "javascript";
+                    break;
+                case "h":
+                case "c":
+                case "cpp":
+                    t = "c_cpp";
+                    break;
+                case "css":
+                case "scss":
+                case "php":
+                case "html":
+                case "json":
+                case "xml":
+                case "ini":
+                    t = n
+            }
+            return t
+        }
+
+        function c(e, t) {
+            200 != e && alert("ERROR[" + e + "]: " + t)
+        }
+
+        function s(e, t, n) {
+            var a = new FormData;
+            a.append("data", new Blob([t], {
+                type: n
+            }), e), requests.add("POST", window.location.pathname+"/edit", a, c)
+        }
+
+        function d(e, t) {
+            ge("preview").style.display = "none", ge("editor").style.display = "block", 200 == e ? r.setValue(t) : r.setValue(""), r.clearSelection()
+        }
+
+        function l(e) {
+            requests.add("GET", window.location.pathname+"/edit", {
+                edit: e
+            }, d)
+        }
+        void 0 === t && (t = window.location.pathname+"/index.html"), void 0 === n && (n = o(t)), void 0 === a && (a = "textmate"), void 0 === i && (i = "text/" + n, "c_cpp" === n && (i = "text/plain"));
+        var r = ace.edit(e);
+        return "plain" !== n && r.getSession().setMode("ace/mode/" + n), r.setTheme("ace/theme/" + a), r.$blockScrolling = 1 / 0, r.getSession().setUseSoftTabs(!0), r.getSession().setTabSize(2), r.setHighlightActiveLine(!0), r.setShowPrintMargin(!1), r.commands.addCommand({
+            name: "saveCommand",
+            bindKey: {
+                win: "Ctrl-S",
+                mac: "Command-S"
+            },
+            exec: function(e) {
+                s(t, e.getValue() + "", i)
+            },
+            readOnly: !1
+        }), r.commands.addCommand({
+            name: "undoCommand",
+            bindKey: {
+                win: "Ctrl-Z",
+                mac: "Command-Z"
+            },
+            exec: function(e) {
+                e.getSession().getUndoManager().undo(!1)
+            },
+            readOnly: !1
+        }), r.commands.addCommand({
+            name: "redoCommand",
+            bindKey: {
+                win: "Ctrl-Shift-Z",
+                mac: "Command-Shift-Z"
+            },
+            exec: function(e) {
+                e.getSession().getUndoManager().redo(!1)
+            },
+            readOnly: !1
+        }), r.loadUrl = function(e) {
+            ge("editor-filename").value = e, n = o(t = e), i = "text/" + n, "plain" !== n && r.getSession().setMode("ace/mode/" + n), l(t)
+        }, r
+    }
+
+    function onBodyLoad() {
+        var e = {},
+            t = (window.location.href.replace(/[?&]+([^=&]+)=([^&]*)/gi, function(t, n, a) {
+                e[n] = a
+            }), createEditor("editor", e.file, e.lang, e.theme));
+        createFileUploader("uploader", createTree("tree", t), t), void 0 === e.file && (e.file = "/index.html"), t.loadUrl(e.file)
+    }
+    "undefined" == typeof XMLHttpRequest && (XMLHttpRequest = function() {
+        try {
+            return new ActiveXObject("Msxml2.XMLHTTP.6.0")
+        } catch (e) {}
+        try {
+            return new ActiveXObject("Msxml2.XMLHTTP.3.0")
+        } catch (e) {}
+        try {
+            return new ActiveXObject("Microsoft.XMLHTTP")
+        } catch (e) {}
+        throw new Error("This browser does not support XMLHttpRequest.")
+    });
+    var QueuedRequester = function() {
+        this.queue = [], this.running = !1, this.xmlhttp = null
+    };
+    QueuedRequester.prototype = {
+        _request: function(e) {
+            if (this.running = !0, !(!e instanceof Object)) {
+                var t = this;
+                ge("loader").style.display = "block";
+                var n = "";
+                if (e.params instanceof FormData) n = e.params;
+                else if (e.params instanceof Object)
+                    for (var a in e.params) n += "" === n ? "GET" === e.method ? "?" : "" : "&", n += encodeURIComponent(a) + "=" + encodeURIComponent(e.params[a]);
+                this.xmlhttp = new XMLHttpRequest, this.xmlhttp.onreadystatechange = function(e, n) {
+                    return function() {
+                        4 == e.readyState && (ge("loader").style.display = "none", n.callback(e.status, e.responseText), 0 === t.queue.length && (t.running = !1), t.running && t._request(t.queue.shift()))
+                    }
+                }(this.xmlhttp, e), "GET" === e.method ? (this.xmlhttp.open(e.method, e.url + n, !0), this.xmlhttp.send()) : (this.xmlhttp.open(e.method, e.url, !0), n instanceof String && this.xmlhttp.setRequestHeader("Content-type", "application/x-www-form-urlencoded"), this.xmlhttp.send(n))
+            }
+        },
+        stop: function() {
+            this.running && (this.running = !1), this.xmlhttp && this.xmlhttp.readyState < 4 && this.xmlhttp.abort()
+        },
+        add: function(e, t, n, a) {
+            this.queue.push({
+                url: t,
+                method: e,
+                params: n,
+                callback: a
+            }), this.running || this._request(this.queue.shift())
+        }
+    };
+    var requests = new QueuedRequester
+</script>
+<script charset=utf-8 id=ace src=https://cdnjs.cloudflare.com/ajax/libs/ace/1.2.6/ace.js></script>
+<script>
+    if (void 0 === ace.edit) {
+        var script = document.createElement("script");
+        script.src = "ace.js", script.async = !1, document.head.appendChild(script)
+    }
+</script>
+
+<body onload=onBodyLoad()>
+    <div id=loader class=loader></div>
+    <div id=uploader></div>
+    <div id=tree></div>
+    <div id=editor></div>
+    <div id=preview style=display:none></div>
+    <iframe id=download-frame style=display:none></iframe>
+</body>
