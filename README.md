@@ -15,6 +15,6 @@ ESP32 based cryptocurrency monitor
 
 ![photo](https://raw.githubusercontent.com/uraymeiviar/cryptolet/master/photo01.JPG)
 
-![setupwifi](https://raw.githubusercontent.com/uraymeiviar/cryptolet/master/photo02.JPG)
+![setupwifi](https://raw.githubusercontent.com/uraymeiviar/cryptolet/master/photo02.jpg)
 
-![webpanel](https://raw.githubusercontent.com/uraymeiviar/cryptolet/master/photo03.JPG)
+![webpanel](https://raw.githubusercontent.com/uraymeiviar/cryptolet/master/photo03.jpg)
