@@ -220,14 +220,26 @@ WebServer* webserver = nullptr;
 void setup(void)
 {
 	Serial.begin(115200);
+	Serial.println(" ");
+	Serial.printf("CPU clock %dMhz\n",getCpuFrequencyMhz());
 
+	char _hostname[20];
+	uint8_t mac[6];
+	WiFi.macAddress(mac);
+	sprintf(_hostname, "cryptolet%02x%02x%02x%02x", mac[2], mac[3], mac[4], mac[5]);
+	Serial.printf("generated hostname %s\n", _hostname);
+
+	Serial.println("init LCD");
 	tft.init(dispWidth, dispHeight); // initialize a ST7789 chip, 240x240 pixels
 	tft.setRotation(2);
 	tft.invertDisplay(false);
 	tft.fillScreen(BLACK);
 	tft.setTextSize(1);
 	tft.setCursor(0, 0);
+	tft.fillScreen(BLACK);
+	Serial.println("Initialized");
 
+	Serial.println("init data");
 	dataSource[0] = new IndodaxDataSource("BTC", "IDR");
 	dataSource[1] = new BfxDataSource("BTC", "USD");
 	dataSource[2] = new IndodaxDataSource("ETH", "IDR");
@@ -245,24 +257,14 @@ void setup(void)
 		}
 		uiPriceTicker[i].label = dataSource[i]->getName();
 	}
+	Serial.println("init data done");		
 
-	Serial.printf("CPU clock %dMhz\n",getCpuFrequencyMhz());
-	Serial.println("Initialized");
-	Serial.println("Connecting to Wifi");
-	connectToWifi(ssid, password);
-
-	Serial.println("Connected");
-
-	HostTime::syncCurrentTime();
-
-	tft.fillScreen(BLACK);
-	tft.setCursor(0, 0);	
-
+	Serial.println("init SPIFFS..");
 	bool spiffsMounted = false;
 	if(!SPIFFS.begin(true)){
 		Serial.println("An Error has occurred while mounting SPIFFS\n");
 		vTaskDelay(500);
-		Serial.println("retrying for second time could be because of not formatted yet\n");
+		Serial.println("retrying for second time could be because of not formatted yet");
 		if(!SPIFFS.begin(true)){
 			Serial.println("(still) An Error has occurred while mounting SPIFFS\n");			
 		}
@@ -274,25 +276,89 @@ void setup(void)
 		spiffsMounted = true;
 	}
 
+	String hostname = String(_hostname);
+
 	if(spiffsMounted)
 	{
 		Serial.printf("SPI FFS %'d of %'d\n",SPIFFS.usedBytes(),SPIFFS.totalBytes());
-		File root = SPIFFS.open("/");
+		fs::File root = SPIFFS.open("/");
 		if(root)
 		{
-			File file = root.openNextFile();
+			fs:File file = root.openNextFile();
 			while(file){
 
 				Serial.printf("SPI FFS File: %s\n", file.name());		
 				file = root.openNextFile();
 			}
 		}
+		Serial.println("init SPIFFS done.");
+
+		if(SPIFFS.exists("/conf/hostname.txt"))
+		{
+			fs::File hostnameFile = SPIFFS.open("/conf/hostname.txt", FILE_READ);
+	
+			if(!hostnameFile){
+				Serial.println("! failed to open /conf/hostname.txt\n");
+			}
+			else{
+				size_t fileSize = hostnameFile.size();
+				char* fileContent = new char[fileSize+1];
+				if(hostnameFile.readBytes(fileContent, fileSize) >= fileSize)
+				{
+					fileContent[fileSize] = NULL;
+					hostname = String(fileContent);
+					Serial.printf("configured hostname %s\n", fileContent);
+				}
+				delete[] fileContent;
+				hostnameFile.close();
+			}
+		}
+		else{
+			Serial.println("/conf/hostname.txt not found\n");
+			fs::File hostnameFile = SPIFFS.open("/conf/hostname.txt", FILE_WRITE);
+			if(!hostnameFile){
+				Serial.println("! failed to open /conf/hostname.txt for write\n");
+			}
+			else{
+				if(hostnameFile.write((const uint8_t*)hostname.c_str(),hostname.length()) >= hostname.length())
+				{
+					Serial.printf("hostname %s written to /conf/hostname.txt\n", hostname.c_str());
+				}
+				else{
+					Serial.println("! failed to write to /conf/hostname.txt\n");
+				}
+				hostnameFile.close();
+			}
+		}
+	}
+
+	
+	Serial.printf("setting hostname = %s\n", hostname.c_str());
+	WiFi.setHostname(hostname.c_str());
+
+	Serial.printf("Connecting to Wifi.. (ssid=%s)\n",ssid);
+	connectToWifi(ssid, password);
+	Serial.println("Connected");
+
+	if (!MDNS.begin(hostname.c_str())) {
+        Serial.println("Error setting up MDNS responder!\n");
+    }
+
+	Serial.println("syncing time..");
+	HostTime::syncCurrentTime();
+	Serial.println("syncing time, done.");
+
+	if(spiffsMounted)
+	{
+		Serial.println("init WebServer..");
 		webserver = new WebServer(80);
 		webserver->begin();
+		Serial.println("init WebServer, done.");
 
 		MDNS.addService("http","tcp",80);
 	}
 
+	Serial.println("starting render thread..");
 	xTaskCreatePinnedToCore(
 		renderDataTask,         /* pvTaskCode */
 		"render",            	/* pcName */

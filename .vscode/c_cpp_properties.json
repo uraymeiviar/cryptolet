@@ -25,6 +25,7 @@
                 "esp32/hardware/esp32/1.0.4/libraries/SPI/src/*",
                 "esp32/hardware/esp32/1.0.4/libraries/WiFiClientSecure/src/*",
                 "esp32/hardware/esp32/1.0.4/libraries/ESPmDNS/src/*",
+                "esp32/hardware/esp32/1.0.4/libraries/FS/src/*",
                 "esp32/hardware/esp32/1.0.4/tools/sdk/include/**",
                 "esp32/hardware/esp32/1.0.4/tools/sdk/include/esp32/*",
                 "esp32/hardware/esp32/1.0.4/tools/sdk/include/esp_event/*",
