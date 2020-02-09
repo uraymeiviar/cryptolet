@@ -44,6 +44,7 @@ const char* password = "tasikmalaya10";
 #include "HostTime.h"
 #include "IndodaxDataSource.h"
 #include "BfxDataSource.h"
+#include "BinanceDataSource.h"
 #include "PriceHistory.h"
 #include "UIPriceTicker.h"
 #include "WebServer.h"
@@ -243,7 +244,7 @@ void setup(void)
 	dataSource[0] = new IndodaxDataSource("BTC", "IDR");
 	dataSource[1] = new BfxDataSource("BTC", "USD");
 	dataSource[2] = new IndodaxDataSource("ETH", "IDR");
-	dataSource[3] = new BfxDataSource("ETH", "USD");
+	dataSource[3] = new BinanceDataSource("ETH", "USDT");
 
 	for(int i=0 ; i<coinCount ; i++){
 		dataUpdateCounter[i] = 0;
