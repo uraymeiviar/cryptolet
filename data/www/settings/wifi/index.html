@@ -1,0 +1,161 @@
+<!doctype html>
+<html>
+  <head>
+    <title>ESP32 cryptolet Settings wifi</title>
+    <link rel="stylesheet" type="text/css" href="/main.css">
+  </head>
+  <body>
+    <div class="header">
+        [
+        <a href="/">home</a> /
+        <a href="/settings/index/html">settings</a> /
+        ]
+    </div>
+    <div class="content">
+        Add AP Profile : <br/>
+        <div class="rowContent">
+            SSID: <input type="text" value="" id="inpSSID"/>&nbsp;
+            Password: <input type="password" value="" id="inpPass"/>&nbsp;
+            <input type="button" value="Add" id="addProfileBtn" />
+        </div>
+        <br/><br/>
+        Stored Profile : <br/>
+        <div id="profileList">
+        </div>
+    </div>
+    <br/>
+    <a href="/settings/index.html" class="menu">back</a>
+
+    <script>
+        var updateProfile = function(ssidName, passValue, callback){
+            if(ssidName.length > 0 && passValue.length > 0)
+            {
+                const postHttp = new XMLHttpRequest();
+                const postUrl='/api/updatewifiprofile';                
+                postHttp.open("POST", postUrl, true);
+                postHttp.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
+                postHttp.onreadystatechange = (e) => {         
+                    if(typeof callback === 'function'){
+                        callback(postHttp, e);
+                    }
+                }
+                postHttp.send("ssid="+ssidName+"&pass="+passValue);
+            }
+        }
+
+        var deleteProfile = function(ssidName, callback){
+            if(ssidName.length > 0)
+            {
+                const postHttp = new XMLHttpRequest();
+                const postUrl='/api/deletewifiprofile';                
+                postHttp.open("POST", postUrl, true);
+                postHttp.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
+                postHttp.onreadystatechange = (e) => {         
+                    if(typeof callback === 'function'){
+                        callback(postHttp, e);
+                    }
+                }
+                postHttp.send("ssid="+ssidName);
+            }
+        }
+
+        var getProfileList = function(){
+            const Http = new XMLHttpRequest();
+            const url='/spiffs/?list=/conf/wifi';
+            Http.open("GET", url, true);
+            Http.onreadystatechange = (e) => {
+                if(Http.readyState === XMLHttpRequest.DONE && Http.status === 200) {
+                    var resp = JSON.parse(Http.response);
+                    for(var profile of resp) {                        
+                        var path = profile.name;
+                        var start = path.lastIndexOf('/');
+                        if(start >= 0 && start != path.length-1){
+                            var ssid = path.substr(start+1);
+                            console.log(ssid);
+                            var placeholder = document.getElementById("profileList");
+                            var row = document.createElement("div");
+                            row.setAttribute("class","rowContent");
+                            row.innerHTML = 'SSID: <input type="text" value="'+ssid+'" id="inpProfileSSID-'+ssid+'"/>&nbsp;';
+                            row.innerHTML+= 'Password: <input type="password" value="xxxxxxxxxx" id="inpProfilePass-'+ssid+'"/>&nbsp;';
+
+                            var updateBtn = document.createElement("input");
+                            updateBtn.setAttribute("ssid", ssid);
+                            updateBtn.setAttribute("type","button");
+                            updateBtn.setAttribute("value","Update");
+                            updateBtn.setAttribute("id","updateProfileBtn-"+ssid);
+                            updateBtn.addEventListener("click",(e) => {
+                                var ssidValue = e.target.getAttribute('ssid');
+                                var ssidName = document.getElementById("inpProfileSSID-"+ssidValue).value;
+                                var passValue = document.getElementById("inpProfilePass-"+ssidValue).value;
+                                updateBtn.disabled = true;
+                                updateProfile(ssidName, passValue, (http) => {
+                                    if(http.readyState === XMLHttpRequest.DONE && http.status === 200) {
+                                        var placeholder = document.getElementById("profileList");
+                                        while (placeholder.firstChild) {
+                                            placeholder.removeChild(placeholder.firstChild);
+                                        }
+                                        setTimeout(()=>{ getProfileList() }, 500);
+                                    } 
+                                    updateBtn.disabled = false;
+                                });
+                            });
+
+                            var deleteBtn = document.createElement("input");
+                            deleteBtn.setAttribute("ssid", ssid);
+                            deleteBtn.setAttribute("type","button");
+                            deleteBtn.setAttribute("value","Delete");
+                            deleteBtn.setAttribute("id","deleteProfileBtn-"+ssid);
+                            deleteBtn.addEventListener("click",(e) => {
+                                var ssidValue = e.target.getAttribute('ssid');
+                                var ssidName = document.getElementById("inpProfileSSID-"+ssidValue).value;
+                                deleteBtn.disabled = true;
+                                deleteProfile(ssidName, (http) => {
+                                    if(http.readyState === XMLHttpRequest.DONE && http.status === 200) {
+                                        var placeholder = document.getElementById("profileList");
+                                        while (placeholder.firstChild) {
+                                            placeholder.removeChild(placeholder.firstChild);
+                                        }
+                                        setTimeout(()=>{ getProfileList() }, 500);
+                                    } 
+                                    deleteBtn.disabled = false;
+                                });
+                            });
+
+                            row.appendChild(updateBtn);
+                            row.appendChild(deleteBtn);
+
+                            placeholder.appendChild(row);
+                        }                        
+                    }
+                }            
+            }
+            Http.send();
+        }
+
+        document.getElementById("addProfileBtn").addEventListener("click",() => {
+            var ssidName = document.getElementById("inpSSID").value;
+            var passValue = document.getElementById("inpPass").value;
+
+            updateProfile(ssidName, passValue, (http) => {
+                if(http.readyState === XMLHttpRequest.DONE && http.status === 200) {
+                    console.log(http.response);
+                    document.getElementById("inpSSID").value = '';
+                    document.getElementById("inpPass").value = '';
+                    document.getElementById("addProfileBtn").disabled = true;
+
+                    var placeholder = document.getElementById("profileList");
+                    while (placeholder.firstChild) {
+                        placeholder.removeChild(placeholder.firstChild);
+                    }
+                    setTimeout(()=>{ 
+                        getProfileList();
+                        document.getElementById("addProfileBtn").disabled = false;
+                    }, 500);
+                } 
+            });
+        });
+
+        getProfileList();
+    </script>    
+  </body>
+</html>

@@ -156,7 +156,14 @@ WebServerDefaultHandler::WebServerDefaultHandler(const fs::FS& fs, const String&
 
 bool WebServerDefaultHandler::canHandle(AsyncWebServerRequest *request) 
 {
-    if(request->url().equalsIgnoreCase("/spiffs")  || 
+    if(request->url().equalsIgnoreCase("/api/gethostname") || 
+       request->url().equalsIgnoreCase("/api/sethostname") ||
+       request->url().equalsIgnoreCase("/api/updatewifiprofile") ||
+       request->url().equalsIgnoreCase("/api/deletewifiprofile"))
+    {
+        return true;
+    }
+    else if(request->url().equalsIgnoreCase("/spiffs")  || 
        request->url().equalsIgnoreCase("/spiffs/") ||
        request->url().equalsIgnoreCase("/spiffs/edit") )
     {
@@ -211,7 +218,85 @@ void WebServerDefaultHandler::handleRequest(AsyncWebServerRequest *request)
         return request->requestAuthentication();
     }
 
-    if(request->url().equalsIgnoreCase("/spiffs")  || 
+    if(request->url().equalsIgnoreCase("/api/gethostname"))
+    {
+        fs::File hostnameFile = _fs.open("/conf/hostname.txt", FILE_READ);
+	
+        if(hostnameFile)
+        {
+            size_t fileSize = hostnameFile.size();
+            char* fileContent = new char[fileSize+1];
+            if(hostnameFile.readBytes(fileContent, fileSize) >= fileSize)
+            {
+                fileContent[fileSize] = NULL;
+                request->send(200, "text/plain", fileContent);
+            }
+            delete[] fileContent;
+            hostnameFile.close();
+        }
+        else{
+            request->send(404);
+        }
+    }
+    else if(request->url().equalsIgnoreCase("/api/sethostname") &&
+            request->hasParam("hostname", true, false))
+    {        
+        fs::File hostnameFile = _fs.open("/conf/hostname.txt", FILE_WRITE);
+        if(hostnameFile)
+        {
+            const String& hostname = request->getParam("hostname", true, false)->value();
+            if(hostnameFile.write((const uint8_t*)hostname.c_str(),hostname.length()) >= hostname.length())
+            {
+                Serial.printf("hostname %s written to /conf/hostname.txt\n", hostname.c_str());
+                request->send(200, "text/plain", hostname);
+            }
+            else{
+                Serial.println("! failed to write to /conf/hostname.txt\n");
+                request->send(500);
+            }
+            hostnameFile.close();
+        }
+    }
+    else if(request->url().equalsIgnoreCase("/api/updatewifiprofile") &&
+            request->hasParam("ssid", true, false) && 
+            request->hasParam("pass", true, false))
+    {
+        String ssid = request->getParam("ssid", true, false)->value();
+        String profileFilePath = "/conf/wifi/"+ssid;
+        fs::File profileFile = _fs.open(profileFilePath, FILE_WRITE);
+        if(profileFile)
+        {
+            const String& pass = request->getParam("pass", true, false)->value();
+            if(profileFile.write((const uint8_t*)pass.c_str(),pass.length()) >= pass.length())
+            {
+                Serial.printf("updated wifi profile %s\n", profileFilePath.c_str());
+                request->send(200, "text/plain", ssid);
+            }
+            else{
+                Serial.printf("! failed to write to %s\n",profileFilePath.c_str());
+                request->send(500);
+            }
+            profileFile.close();                
+        }
+    }
+    else if(request->url().equalsIgnoreCase("/api/deletewifiprofile") &&
+            request->hasParam("ssid", true, false))
+    {
+        String ssid = request->getParam("ssid", true, false)->value();
+        String profileFilePath = "/conf/wifi/"+ssid;
+        if(_fs.exists(profileFilePath)){
+            if(_fs.remove(profileFilePath))
+            {
+                Serial.printf("deleted wifi profile %s\n", profileFilePath.c_str());
+                request->send(200, "text/plain", ssid);
+            }
+            else{
+                Serial.printf("! failed to delete to %s\n", profileFilePath.c_str());
+                request->send(500);
+            }
+        }
+    }
+    else if(request->url().equalsIgnoreCase("/spiffs")  || 
        request->url().equalsIgnoreCase("/spiffs/") ||
        request->url().equalsIgnoreCase("/spiffs/edit") )
     {

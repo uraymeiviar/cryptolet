@@ -33,12 +33,14 @@ Arduino_ST7789 tft = Arduino_ST7789(TFT_DC, TFT_RST, TFT_MOSI, TFT_SCLK, TFT_CS)
 #define dispWidth   240
 #define dispHeight  320
 
-const char* ssid = "CXI28-LT1-N";
-const char* password = "tasikmalaya10";
+// const char* ssid = "CXI28-LT1-N";
+// const char* password = "tasikmalaya10";
 
-
+String ssid = String();
+String password = String();
 
 #include <ESPmDNS.h>
+#include <WiFi.h>
 #include "FS.h"
 #include "esp32-hal-cpu.h"
 #include "HostTime.h"
@@ -73,37 +75,160 @@ UIPriceTicker uiPriceTicker[] = {
 
 const size_t coinCount = sizeof(priceHistory)/sizeof(PriceHistory);
 
-IPAddress connectToWifi(const char *ssid, const char *password)
+String scanWifi()
 {
-	tft.printf("Connecting to: %s", ssid);
+	WiFi.mode(WIFI_STA);
+    WiFi.disconnect();
+	vTaskDelay(100);
 
-	WiFi.begin(ssid, password);
-	int retryCount = 3;
-	while (WiFi.status() != WL_CONNECTED)
+	Serial.println("Scanning Networks..");
+	tft.println("Scanning Networks..");
+	byte numSsid = WiFi.scanNetworks(false, true,false,500);
+
+	Serial.printf("Number of available WiFi networks discovered: %d\n", numSsid);
+	
+	int bestSsidIndex = -1;
+	int32_t bestSsidRSSI = -100;
+	bool matchProfileFound = false;
+	int retryScanCount = 3;
+	while(bestSsidIndex < 0 && retryScanCount>0)
 	{
-		tft.fillCircle((dispWidth / 2), (dispHeight / 2), 10, WHITE);
-		vTaskDelay(500);
-		tft.fillRect((dispWidth / 2) - 10, (dispHeight / 2) - 10, (dispWidth / 2) + 10, (dispHeight / 2) + 10, BLACK);
-		retryCount--;
-		if (retryCount == 0)
+		retryScanCount--;
+		for (int i = 0; i < numSsid; ++i) 
 		{
-			tft.println("** Scan Networks **");
-			byte numSsid = WiFi.scanNetworks();
+			String ssidName = WiFi.SSID(i);
+			wifi_auth_mode_t authType = WiFi.encryptionType(i);
+			int32_t ssidRSSI = WiFi.RSSI(i);
+			Serial.printf("%02d. %s (%d) %s\n",i+1,
+				ssidName.c_str(), 
+				ssidRSSI, 
+				(authType == WIFI_AUTH_OPEN)?" ":"*"
+			);
 
-			tft.print("Number of available WiFi networks discovered:");
-			tft.println(numSsid);
-			retryCount = 3;
+			tft.printf("%02d. %s (%d) %s\n",i+1,
+				ssidName.c_str(), 
+				ssidRSSI, 
+				(authType == WIFI_AUTH_OPEN)?" ":"*");
+
+			if(authType == WIFI_AUTH_OPEN)
+			{
+				if(!matchProfileFound)
+				{
+					if(bestSsidRSSI < ssidRSSI)
+					{
+						bestSsidIndex = i;
+						bestSsidRSSI = ssidRSSI;
+						Serial.printf("found target open ssid %s\n", ssidName.c_str());
+					}
+				}
+			}
+			else{
+				if(SPIFFS.exists("/conf/wifi/"+ssidName)){
+					Serial.printf("match ssid with profile %s\n", ssidName.c_str());
+					if(!matchProfileFound){
+						bestSsidIndex = i;
+						bestSsidRSSI = ssidRSSI;
+						matchProfileFound = true;
+						Serial.printf("ssid %s selected\n", ssidName.c_str());
+					}
+					else if(bestSsidRSSI < ssidRSSI){
+						bestSsidIndex = i;
+						bestSsidRSSI = ssidRSSI;
+						Serial.printf("ssid %s selected\n", ssidName.c_str());
+					}
+				}
+			}
 		}
 	}
 
-	IPAddress ip = WiFi.localIP();
-	tft.print("Connected, IP:");
-	tft.println(ip);
+	if(bestSsidIndex >= 0)
+	{
+		return WiFi.SSID(bestSsidIndex);
+	}
+	else{
+		return String();
+	}
+}
 
-	long rssi = WiFi.RSSI();
-	tft.print("RSSI:");
-	tft.println(rssi);
-	return ip;
+String getWifiPassword(const String ssid)
+{
+	String profileFilePath = "/conf/wifi/"+ssid;
+	String result = String();
+	if(SPIFFS.exists(profileFilePath)){
+		fs::File profileFile = SPIFFS.open(profileFilePath, FILE_READ);
+		if(profileFile)
+		{
+			size_t fileSize = profileFile.size();
+			char* fileContent = new char[fileSize+1];
+			if(profileFile.readBytes(fileContent, fileSize) >= fileSize)
+			{
+				fileContent[fileSize] = NULL;
+				Serial.printf("wifi profile %s (%d bytes) : %s\n",profileFilePath.c_str(), fileSize,fileContent);
+				result = String(fileContent);
+			}
+			delete[] fileContent;
+			profileFile.close();
+		}
+		else{
+			Serial.printf("failed to open wifi profile %s\n",profileFilePath.c_str());
+		}
+	}
+	return result;
+}
+
+bool isAPRunning = false;
+bool openWifiAP(const String ssid, String password=String()){
+	Serial.printf("opening AP with ssid %s\n", ssid.c_str());
+	const char* pass = password.c_str();
+	if(password.length() <= 0){
+		pass = nullptr;
+	}
+	bool result = WiFi.softAP(ssid.c_str(), pass);
+	if(result)
+	{
+		IPAddress myIP = WiFi.softAPIP();
+		Serial.printf("AP IP address: %s\n", myIP.toString().c_str());
+		tft.println("========================");
+		tft.println("Please follow these steps:");
+		tft.printf(" 1. connect to SSID:\n");
+		tft.printf("    %s\n", ssid.c_str());
+		tft.printf(" 2. go to http://%s\n", myIP.toString().c_str());
+		tft.printf(" 3. configure Wifi profile\n");
+		tft.printf(" 4. reboot\n");
+		isAPRunning = true;
+	}
+	else{
+		Serial.printf("failed to open AP with ssid %s\n", ssid.c_str());
+	}
+
+	return result;
+}
+
+bool connectToWifi(const char *ssid, const char *password)
+{
+	Serial.printf("Connecting to: %s", ssid);
+
+	WiFi.begin(ssid, password);
+	int retryCount = 3;
+	while (WiFi.status() != WL_CONNECTED && retryCount>0)
+	{
+		if(WiFi.status() != WL_CONNECTED)
+		{
+			vTaskDelay(1000);
+			retryCount--;
+		}
+	}
+
+	if(WiFi.status() == WL_CONNECTED)
+	{
+		isAPRunning = false;
+		IPAddress ip = WiFi.localIP();
+		long rssi = WiFi.RSSI();
+
+		Serial.printf("Connected, IP:%s RSSI:%d\n",ip.toString().c_str(), rssi);
+	}
+
+	return (WiFi.status() == WL_CONNECTED);
 }
 
 int coinIndex = 0;
@@ -121,12 +246,10 @@ void renderDataTask( void* param)
 	Serial.println(xPortGetCoreID());	
 	uiFooter.draw();
 	uiHeader.draw();
-	//drawHeader(HostTime::getCurrentTime());
 
 	vTaskDelay(1000);
 	while(true)
 	{
-		//drawHeader(HostTime::getCurrentTime());
 		uiHeader.draw();
 		if (WiFi.status() == WL_CONNECTED)
 		{			
@@ -191,6 +314,8 @@ void setup(void)
 	tft.fillScreen(BLACK);
 	tft.setTextSize(1);
 	tft.setCursor(0, 0);	
+	tft.printf("CPU clock %dMhz\n",getCpuFrequencyMhz());
+	tft.printf("hostname %s\n", _hostname);
 	Serial.println("Initialized");
 
 	Serial.println("init data");
@@ -214,6 +339,7 @@ void setup(void)
 	Serial.println("init data done");		
 
 	Serial.println("init SPIFFS..");
+	tft.println("init SPIFFS..");
 	bool spiffsMounted = false;
 	if(!SPIFFS.begin(true)){
 		Serial.println("An Error has occurred while mounting SPIFFS\n");
@@ -235,6 +361,7 @@ void setup(void)
 	if(spiffsMounted)
 	{
 		Serial.printf("SPI FFS %'d of %'d\n",SPIFFS.usedBytes(),SPIFFS.totalBytes());
+		tft.printf("SPI FFS %'d of %'d\n",SPIFFS.usedBytes(),SPIFFS.totalBytes());
 		fs::File root = SPIFFS.open("/");
 		if(root)
 		{
@@ -288,51 +415,84 @@ void setup(void)
 
 	
 	Serial.printf("setting hostname = %s\n", hostname.c_str());
+	tft.printf("setting hostname = %s\n", hostname.c_str());
 	WiFi.setHostname(hostname.c_str());
 
-	Serial.printf("Connecting to Wifi.. (ssid=%s)\n",ssid);
-	connectToWifi(ssid, password);
-	Serial.println("Connected");
+	Serial.println("Scanning wifi..");
+	tft.println("Scanning Wifi..");
+	ssid = scanWifi();
 
-	if (!MDNS.begin(hostname.c_str())) {
-        Serial.println("Error setting up MDNS responder!\n");
-    }
-
-	Serial.println("syncing time..");
-	HostTime::syncCurrentTime();
-	Serial.println("syncing time, done.");
-
-	if(spiffsMounted)
+	if(ssid.length() > 0)
 	{
-		Serial.println("init WebServer..");
-		webserver = new WebServer(80);
-		webserver->begin();
-		Serial.println("init WebServer, done.");
+		Serial.printf("Connecting to Wifi.. (ssid=%s)\n",ssid.c_str());
+		tft.printf("Connecting to Wifi.. (ssid=%s)\n",ssid.c_str());
+		password = getWifiPassword(ssid);
+		if(connectToWifi(ssid.c_str(), password.c_str()))
+		{
+			Serial.println("Connected");
 
-		MDNS.addService("http","tcp",80);
+			if (!MDNS.begin(hostname.c_str())) {
+				Serial.println("Error setting up MDNS responder!\n");
+			}
+
+			Serial.println("syncing time..");
+			tft.println("syncing time..");
+			HostTime::syncCurrentTime();
+			Serial.println("syncing time, done.");
+			tft.println("syncing time, done.");
+
+			if(spiffsMounted)
+			{
+				Serial.println("init WebServer..");
+				tft.println("init WebServer..");
+				webserver = new WebServer(80);
+				webserver->begin();
+				Serial.println("init WebServer, done.");
+				tft.println("init WebServer, done.");
+
+				MDNS.addService("http","tcp",80);
+			}
+
+			tft.fillScreen(BLACK);
+			Serial.println("starting render thread..");
+			xTaskCreatePinnedToCore(
+				renderDataTask,         /* pvTaskCode */
+				"render",            	/* pcName */
+				4096,                    /* usStackDepth */
+				NULL,                   /* pvParameters */
+				2 | portPRIVILEGE_BIT,                      /* uxPriority */
+				&renderTask,            /* pxCreatedTask */
+				0
+			);                    		/* xCoreID */	
+		}
+		else{
+			Serial.println("! wifi failed to connect");
+		}		
 	}
-
-	tft.fillScreen(BLACK);
-	Serial.println("starting render thread..");
-	xTaskCreatePinnedToCore(
-		renderDataTask,         /* pvTaskCode */
-		"render",            	/* pcName */
-		4096,                    /* usStackDepth */
-		NULL,                   /* pvParameters */
-		2 | portPRIVILEGE_BIT,                      /* uxPriority */
-		&renderTask,            /* pxCreatedTask */
-		0
-	);                    		/* xCoreID */	
+	else{
+		Serial.println("! unable to find wifi AP to connect");
+		tft.println("! unable to find wifi AP to connect");
+		if(openWifiAP(hostname))
+		{
+			Serial.println("init WebServer..");
+			webserver = new WebServer(80);
+			webserver->begin();
+			Serial.println("init WebServer, done.");
+		}
+	}
 }
 
 unsigned long lastFetchDataTaskExec;
 int fetchDataTaskCounter = 0;
 void loop()
 {
-	if (WiFi.status() != WL_CONNECTED)
-	{
+	if(isAPRunning){
+		vTaskDelay(1000);
+	}
+	else if (WiFi.status() != WL_CONNECTED)
+	{		
 		Serial.println("! Wifi Reconnecting...");
-		connectToWifi(ssid, password);
+		connectToWifi(ssid.c_str(), password.c_str());
 	}
 	else{			
 		lastFetchDataTaskExec = HostTime::getMillis();

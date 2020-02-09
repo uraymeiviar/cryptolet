@@ -1,0 +1,107 @@
+@import url('https://fonts.googleapis.com/css?family=Major+Mono+Display|Oxygen+Mono&display=swap');
+
+body, html {
+    margin: 0;
+    padding: 0;
+    font-family: 'Oxygen Mono', monospace;
+    scroll-behavior: smooth;
+    transition: all 0.5s;
+    user-select: none;
+    font-size: 12px;
+}
+
+::-webkit-scrollbar {
+    display: none;
+}
+
+a{
+    cursor: pointer;
+    text-decoration: none;
+    color: inherit;
+}
+
+input {
+    transition: all 0.5s;
+    box-sizing: border-box;
+    user-select: text;
+    border: 2px solid #009688;
+    padding: 0.5rem;
+}
+
+input:focus, textarea:focus, select:focus{
+    outline: none;
+    background-color: #63dacf;
+    border: 2px solid #0c2c29;
+}
+
+input[type="button"],
+button {
+    background-color: #63dacf;
+    border: 2px solid #009688;
+    cursor: pointer;
+    color: #000000;
+    padding: 0.5rem;
+    padding-left: 1rem;
+    padding-right: 1rem;
+    transition: all 0.5s;
+    user-select: none;
+    margin: 0.25rem;
+    align-items: center;
+    white-space: nowrap;
+}
+
+input[type="button"]:hover,
+button:hover {
+    background-color: #0c2c29;
+    border: 2px solid #63dacf;
+    color: #63dacf;
+}
+
+input[type="button"]:active,
+button:active {
+    border: 2px solid #0c2c29 !important;
+}
+
+input[type="button"]:focus,
+button:focus {
+    border: 2px solid #0c2c29;
+    outline: none;
+}
+
+.menu{
+    padding: 0.5rem;
+    background-color: #63dacf;
+    border-left: 4px solid #009688;
+    margin-left: 4px;
+    min-width: 200px;
+    display: inline-block;
+    cursor:pointer;
+}
+
+.menu:hover{
+    background-color: #009688;
+    border-left: 4px solid #0c2c29;
+}
+
+.header{
+    padding: 0.5rem;
+    display: block;
+    width: 100%;
+    white-space: nowrap;
+    background-color: #63dacf;
+    border-bottom: 1px solid #009688;
+}
+
+.content{
+    padding:0.5rem;    
+}
+
+.rowContent{
+    display: inline-block;
+    background-color: #bff5f0;
+    padding: 6px;
+    padding-top: 2px;
+    padding-bottom: 2px;
+    border-left: 4px solid #009688;
+    margin-bottom: 1px;
+}

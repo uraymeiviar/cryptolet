@@ -1,0 +1,45 @@
+<!doctype html>
+<html>
+  <head>
+    <title>ESP32 cryptolet Settings hostname</title>
+    <link rel="stylesheet" type="text/css" href="/main.css">
+  </head>
+  <body>
+    <div class="header">
+        [
+        <a href="/">home</a> /
+        <a href="/settings/index/html">settings</a> /
+        ]
+    </div>
+    <div class="content">
+        Hostname : <input type="text" value="" id="inpHostname"/>&nbsp;<input type="button" id="setHostnameBtn" value="Update" />
+    </div>
+    <a href="/settings/index.html" class="menu">back</a>
+    <script>
+        const Http = new XMLHttpRequest();
+        const url='/api/gethostname';
+        Http.open("GET", url, true);
+        Http.onreadystatechange = (e) => {
+            if(Http.readyState === XMLHttpRequest.DONE && Http.status === 200) {
+                document.getElementById("inpHostname").value = Http.responseText;
+            }            
+        }
+        Http.send();
+
+        document.getElementById("setHostnameBtn").addEventListener("click",() => {
+            var newHostname = document.getElementById("setHostnameBtn").value;
+
+            const postHttp = new XMLHttpRequest();
+            const postUrl='/api/sethostname';            
+            postHttp.open("POST", postUrl, true);
+            postHttp.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
+            postHttp.onreadystatechange = (e) => {
+                if(postHttp.readyState === XMLHttpRequest.DONE && postHttp.status === 200) {
+                    document.getElementById("inpHostname").value = postHttp.responseText;
+                }            
+            }
+            postHttp.send("hostname="+newHostname);
+        });
+    </script>
+  </body>
+</html>
