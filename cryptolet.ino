@@ -37,7 +37,7 @@ const char* ssid = "CXI28-LT1-N";
 const char* password = "tasikmalaya10";
 
 
-#include <TimeLib.h>
+
 #include <ESPmDNS.h>
 #include "FS.h"
 #include "esp32-hal-cpu.h"
@@ -48,7 +48,11 @@ const char* password = "tasikmalaya10";
 #include "PriceHistory.h"
 #include "UIPriceTicker.h"
 #include "WebServer.h"
+#include "UIHeader.h"
+#include "UIFooter.h"
 
+UIHeader uiHeader(WiFi,tft,0,0,dispWidth, dispHeight);
+UIFooter uiFooter(tft,0,0,dispWidth, dispHeight);
 DataSource* dataSource[4];
 
 #define priceHistoryMaxCount 30
@@ -102,58 +106,6 @@ IPAddress connectToWifi(const char *ssid, const char *password)
 	return ip;
 }
 
-void drawHeader(uint32_t currentTime)
-{
-	float rssi = (float)WiFi.RSSI();
-
-	tft.setTextSize(1);
-	tft.fillRect(0, 0, dispWidth, 13, 0xC7E0);
-	tft.setCursor(4, 3);
-	tft.setTextColor(BLACK);
-
-	tft.printf("%02d/%02d %02d:%02d:%02d",
-		month(currentTime),
-		day(currentTime),
-		hour(currentTime),
-		minute(currentTime),
-		second(currentTime));
-
-	int16_t tx, ty;
-	uint16_t tw, th;
-	tft.getTextBounds(ssid, 0, 0, &tx, &ty, &tw, &th);
-	tft.setCursor(dispWidth - (tw + 10), 3);
-	tft.print(ssid);
-
-	int16_t rssiHeight = 1+(int16_t)(6.0f*((60.0f+(rssi+30.0f))/60.0f));
-	tft.drawRect(dispWidth-7,1,6,11, 0x0261);
-	tft.fillRect(dispWidth-5,11-rssiHeight,2,rssiHeight, BLACK);
-
-	//Serial.printf("rssi = %.2f h=%d\n", rssi,rssiHeight);
-}
-
-
-void drawFooter()
-{
-	tft.setTextSize(1);
-	tft.setTextColor(BLACK);
-
-	tft.fillRect(1, dispHeight - 15, dispWidth / 4 - 2, 15, 0x9FE0);
-	tft.setCursor(4, dispHeight - 13);
-	tft.print("MENU");
-
-	tft.fillRect(1 + dispWidth / 4, dispHeight - 15, dispWidth / 4 - 2, 15, 0x07FF);
-	tft.setCursor(4 + dispWidth / 4, dispHeight - 13);
-	tft.print(" UP ");
-
-	tft.fillRect(1 + 2 * (dispWidth / 4), dispHeight - 15, dispWidth / 4 - 2, 15, 0xF01F);
-	tft.setCursor(4 + 2 * (dispWidth / 4), dispHeight - 13);
-	tft.print("DOWN");
-
-	tft.fillRect(1 + 3 * (dispWidth / 4), dispHeight - 15, dispWidth / 4 - 2, 15, 0xF800);
-	tft.setCursor(4 + 3 * (dispWidth / 4), dispHeight - 13);
-	tft.print(" RST");
-}
-
 int coinIndex = 0;
 int dataUpdateCounter[coinCount];
 int dataRenderCounter[coinCount];
@@ -167,13 +119,15 @@ void renderDataTask( void* param)
 {		
 	Serial.print("render data task started on core ");
 	Serial.println(xPortGetCoreID());	
-	drawFooter();
-	drawHeader(HostTime::getCurrentTime());
+	uiFooter.draw();
+	uiHeader.draw();
+	//drawHeader(HostTime::getCurrentTime());
 
 	vTaskDelay(1000);
 	while(true)
 	{
-		drawHeader(HostTime::getCurrentTime());
+		//drawHeader(HostTime::getCurrentTime());
+		uiHeader.draw();
 		if (WiFi.status() == WL_CONNECTED)
 		{			
 			lastRenderDataTaskExec = HostTime::getMillis();
@@ -236,8 +190,7 @@ void setup(void)
 	tft.invertDisplay(false);
 	tft.fillScreen(BLACK);
 	tft.setTextSize(1);
-	tft.setCursor(0, 0);
-	tft.fillScreen(BLACK);
+	tft.setCursor(0, 0);	
 	Serial.println("Initialized");
 
 	Serial.println("init data");
@@ -359,6 +312,7 @@ void setup(void)
 		MDNS.addService("http","tcp",80);
 	}
 
+	tft.fillScreen(BLACK);
 	Serial.println("starting render thread..");
 	xTaskCreatePinnedToCore(
 		renderDataTask,         /* pvTaskCode */
